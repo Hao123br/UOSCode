@@ -615,7 +615,7 @@ void alloc_arrays(){
 		  
 			ApplicationContainer serverApps;
 			ApplicationContainer clientApps;
-			Time interPacketInterval = MilliSeconds (50);
+			Time interPacketInterval = MilliSeconds (25);
 			uint16_t dlPort = 1100;
 			uint16_t ulPort = 2000;
 			  
