@@ -78,6 +78,9 @@
 // #include <lte-test-ue-measurements.h>
 #include "ns3/flow-monitor-module.h"
 
+#include <vector>
+#include "matriz.h"
+
 #include <math.h>
 
 #include <boost/algorithm/string/classification.hpp> // Include boost::for is_any_of
@@ -85,10 +88,10 @@
 
 using namespace ns3;
 
-const uint16_t numberOfeNodeBNodes = 4;
-const uint16_t numberOfUENodes = 100; //Number of user to test: 245, 392, 490 (The number of users and their traffic model follow the parameters recommended by the 3GPP)
 const uint16_t numberOfOverloadUENodes = 0; // user that will be connected to an specific enB. 
-const uint16_t numberOfUABS = 6;
+uint16_t numberOfeNodeBNodes = 4;
+uint16_t numberOfUENodes = 100; //Number of user to test: 245, 392, 490 (The number of users and their traffic model follow the parameters recommended by the 3GPP)
+uint16_t numberOfUABS = 6;
 double simTime = 100; // 120 secs ||100 secs || 300 secs
 const int m_distance = 2000; //m_distance between enBs towers.
 // Inter packet interval in ms
@@ -102,10 +105,10 @@ uint8_t bandwidth_enb = 100; // 100 RB --> 20MHz  |  25 RB --> 5MHz
 uint8_t bandwidth_UABS = 100; // 100 RB --> 20MHz  |  25 RB --> 5MHz
 //uint8_t bandwidth = 25; // To use with UABS --> tengo que ver si no necesito crear otro LTEhelper solo para los UABS.
 double speedUABS = 0;
-double ue_info[numberOfeNodeBNodes + numberOfUABS][numberOfUENodes]; //UE Connection Status Register Matrix
-double ue_imsi_sinr[numberOfUENodes]; //UE Connection Status Register Matrix
-double ue_imsi_sinr_linear[numberOfUENodes];
-double ue_info_cellid[numberOfUENodes];
+matriz<double> ue_info; //UE Connection Status Register Matrix
+vector<double> ue_imsi_sinr; //UE Connection Status Register Matrix
+vector<double> ue_imsi_sinr_linear;
+vector<double> ue_info_cellid;
 int minSINR = 0; //  minimum SINR to be considered to clusterization
 string GetClusterCoordinates;
 double PDR=0.0; //Packets Delay Rate
@@ -117,8 +120,6 @@ bool UABS_On_Flag = false;
 std::stringstream cmd;
 double UABSHeight = 80;
 double enBHeight = 30;
-uint32_t nRuns = 1;
-uint32_t randomSeed = 1234;
 int scen = 4; 
 // [Scenarios --> Scen[0]: General Scenario, with no UABS support, network ok;  Scen[1]: one enB damaged (off) and no UABS;
 // Scen[2]: one enB damaged (off) with supporting UABS; Scen[3]:Overloaded enB(s) with no UABS support; Scen[4]:Overloaded enB(s) with UABS support; ]
@@ -143,6 +144,12 @@ NodeContainer ueNodes;
 		NS_LOG_COMPONENT_DEFINE ("UOSLTE");
 
 
+void alloc_arrays(){
+	ue_info.setDimensions (numberOfeNodeBNodes + numberOfUABS, numberOfUENodes);
+	ue_imsi_sinr.resize (numberOfUENodes);
+	ue_imsi_sinr_linear.resize (numberOfUENodes);
+	ue_info_cellid.resize (numberOfUENodes);
+}
 
 		void NotifyMeasureMentReport (string context, uint64_t imsi, uint16_t cellid, uint16_t rnti, LteRrcSap::MeasurementReport msg)
 		{
@@ -825,34 +832,30 @@ NodeContainer ueNodes;
 		//LogComponentEnable ("EvalvidServer", LOG_LEVEL_INFO);
 
 		// File to Log all Users that will be connected to UABS and how many UABS will be activated.
-		
+		uint32_t randomSeed = 1234;
 
 		CommandLine cmm;
-    	cmm.AddValue("randomSeed", "value of seed for random", randomSeed);
+		cmm.AddValue("randomSeed", "value of seed for random", randomSeed);
     	cmm.AddValue("scen", "scenario to run", scen);
-    	cmm.AddValue("nRuns", "Number of runs", nRuns);
     	cmm.AddValue("graphType","Type of graphs", graphType); 
-    	//cmm.AddValue("numberOfUABS", "Number of UABS", numberOfUABS);
-    	//cmm.AddValue("numberOfeNodeBNodes", "Number of enBs", numberOfeNodeBNodes);
+		cmm.AddValue("nUE", "Number of UEs", numberOfUENodes);
+    	cmm.AddValue("nUABS", "Number of UABS", numberOfUABS);
+    	cmm.AddValue("nENB", "Number of enBs", numberOfeNodeBNodes);
     	cmm.AddValue("remMode","Radio environment map mode",remMode);
 		cmm.AddValue("enableNetAnim","Generate NetAnim XML",enableNetAnim);
     	cmm.Parse(argc, argv);
-
-		for (uint32_t z = 0; z < nRuns; z++){
-				uint32_t seed = randomSeed + z;
-				SeedManager::SetSeed (seed);
-				NS_LOG_UNCOND("Run # " << std::to_string(z));
-				
+		
+		SeedManager::SetSeed (randomSeed);
+		alloc_arrays();
 				Users_UABS.str(""); //To clean these variables in every run because they are global.
 				Qty_UABS.str("");	//To clean these variables in every run because they are global.
 				uenodes_log.str("");
 				Qty_UE_SINR.str("");
 
-				Users_UABS << "UE_info_UABS_RUN#" << z;
-				Qty_UABS << "Quantity_UABS_per_RUN#" << z;
-				uenodes_log << "LTEUEs_Log_RUN#" << z;
-				Qty_UE_SINR << "Qty_UE_SINR_RUN#" << z;
-
+				Users_UABS << "UE_info_UABS";
+				Qty_UABS << "Quantity_UABS";
+				uenodes_log << "LTEUEs_Log";
+				Qty_UE_SINR << "Qty_UE_SINR";
 			
 				UE_UABS.open(Users_UABS.str(),std::ios_base::app);
 				UABS_Qty.open(Qty_UABS.str(),std::ios_base::app);
@@ -1033,9 +1036,6 @@ NodeContainer ueNodes;
 		remoteHostStaticRouting->AddNetworkRouteTo (Ipv4Address ("7.0.0.0"), Ipv4Mask ("255.0.0.0"), 1);
 	  
 		// Create node containers: UE, UE Overloaded Group ,  eNodeBs, UABSs.
-		//NodeContainer ueNodes;
-		NodeContainer ueNodesN;
-        ueNodes = ueNodesN;
 		ueNodes.Create(numberOfUENodes);
 		NodeContainer ueOverloadNodes;
 		if (scen == 3 || scen == 4)
@@ -1383,7 +1383,7 @@ NodeContainer ueNodes;
 		AnimationInterface* anim;
 	  	// ---------------------- Configuration of Netanim  -----------------------//
 		if(enableNetAnim){
-			anim = new AnimationInterface ("UOSLTE_run_"+std::to_string(z)+".xml"); // Mandatory
+			anim = new AnimationInterface("UOSLTE.xml"); // Mandatory
 			anim->SetMaxPktsPerTraceFile(5000000); // Set animation interface max packets. (TO CHECK: how many packets i will be sending?) 
 			// Cor e Descrição para eNb
 			for (uint32_t i = 0; i < enbNodes.GetN(); ++i) 
@@ -1441,35 +1441,35 @@ NodeContainer ueNodes;
 
 
 		//Gnuplot parameters for Throughput
-		string fileNameWithNoExtension = "Throughput_run_";
-		string graphicsFileName        = fileNameWithNoExtension + std::to_string(z) +".png";
-		string plotFileName            = fileNameWithNoExtension + std::to_string(z)+".plt";
+		string fileNameWithNoExtension = "Throughput";
+		string graphicsFileName        = fileNameWithNoExtension + ".png";
+		string plotFileName            = fileNameWithNoExtension + ".plt";
 		string plotTitle               = "Throughput vs Time";
 		string dataTitle               = "Throughput";
 		//Gnuplot parameters for PDR
-		string fileNameWithNoExtensionPDR = "PDR_run_";
-		string graphicsFileNamePDR        = fileNameWithNoExtensionPDR + std::to_string(z) +".png";
-		string plotFileNamePDR            = fileNameWithNoExtensionPDR + std::to_string(z)+".plt";
+		string fileNameWithNoExtensionPDR = "PDR";
+		string graphicsFileNamePDR        = fileNameWithNoExtensionPDR + ".png";
+		string plotFileNamePDR            = fileNameWithNoExtensionPDR + ".plt";
 		string plotTitlePDR               = "PDR Mean"; //to check later
 		string dataTitlePDR               = "Packet Delivery Ratio Mean";
 		//Gnuplot parameters for PLR
-		string fileNameWithNoExtensionPLR = "PLR_run_";
-		string graphicsFileNamePLR        = fileNameWithNoExtensionPLR + std::to_string(z) +".png";
-		string plotFileNamePLR            = fileNameWithNoExtensionPLR + std::to_string(z)+".plt";
+		string fileNameWithNoExtensionPLR = "PLR";
+		string graphicsFileNamePLR        = fileNameWithNoExtensionPLR + ".png";
+		string plotFileNamePLR            = fileNameWithNoExtensionPLR + ".plt";
 		string plotTitlePLR               = "PLR Mean";
 		string dataTitlePLR               = "Packet Lost Ratio Mean";
 
 		//Gnuplot parameters for APD
-		string fileNameWithNoExtensionAPD = "APD_run_";
-		string graphicsFileNameAPD        = fileNameWithNoExtensionAPD + std::to_string(z) +".png";
-		string plotFileNameAPD            = fileNameWithNoExtensionAPD + std::to_string(z)+".plt";
+		string fileNameWithNoExtensionAPD = "APD";
+		string graphicsFileNameAPD        = fileNameWithNoExtensionAPD + ".png";
+		string plotFileNameAPD            = fileNameWithNoExtensionAPD + ".plt";
 		string plotTitleAPD              = "APD Mean";
 		string dataTitleAPD               = "Average Packet Delay Mean";
 
 		//Gnuplot parameters for APD
-		string fileNameWithNoExtensionJitter = "Jitter_run_";
-		string graphicsFileNameJitter       = fileNameWithNoExtensionJitter + std::to_string(z) +".png";
-		string plotFileNameJitter            = fileNameWithNoExtensionJitter + std::to_string(z)+".plt";
+		string fileNameWithNoExtensionJitter = "Jitter";
+		string graphicsFileNameJitter       = fileNameWithNoExtensionJitter + ".png";
+		string plotFileNameJitter            = fileNameWithNoExtensionJitter + ".plt";
 		string plotTitleJitter              = "Jitter Mean";
 		string dataTitleJitter              = "Jitter Mean";
 
@@ -1576,7 +1576,7 @@ NodeContainer ueNodes;
 
 		// Print per flow statistics
 		ThroughputCalc(monitor,classifier,datasetThroughput,datasetPDR,datasetPLR,datasetAPD);
-		monitor->SerializeToXmlFile("UOSLTE-FlowMonitor_run_"+std::to_string(z)+".xml",true,true);
+		monitor->SerializeToXmlFile("UOSLTE-FlowMonitor.xml",true,true);
 
 		//Gnuplot ...continued
  		//Throughput
@@ -1632,8 +1632,6 @@ NodeContainer ueNodes;
 
 		Simulator::Destroy ();
 	  
-		NS_LOG_INFO ("Done.");
-	}
-		return 0;
-	}
-	 
+	NS_LOG_INFO ("Done.");
+	return 0;
+}
