@@ -41,6 +41,7 @@
 #include <sstream>      // std::stringstream
 #include <memory>
 #include <unordered_set>
+#include <unordered_map>
 #include "ns3/double.h"
 #include <ns3/boolean.h>
 #include <ns3/enum.h>
@@ -110,6 +111,7 @@ matriz<double> ue_info; //UE Connection Status Register Matrix
 vector<double> ue_imsi_sinr; //UE Connection Status Register Matrix
 vector<double> ue_imsi_sinr_linear;
 vector<double> ue_info_cellid;
+std::unordered_map<FlowId, uint64_t> prev_rx_bytes;
 int minSINR = 0; //  minimum SINR to be considered to clusterization
 string GetClusterCoordinates;
 bool UABSFlag;
@@ -153,6 +155,7 @@ void alloc_arrays(){
 	ue_imsi_sinr.resize (numberOfUENodes);
 	ue_imsi_sinr_linear.resize (numberOfUENodes);
 	ue_info_cellid.resize (numberOfUENodes);
+	prev_rx_bytes.reserve (numberOfUENodes);
 }
 
 		void NotifyMeasureMentReport (string context, uint64_t imsi, uint16_t cellid, uint16_t rnti, LteRrcSap::MeasurementReport msg)
@@ -574,7 +577,8 @@ void ThroughputCalc(Ptr<FlowMonitor> monitor, Ptr<Ipv4FlowClassifier> classifier
 		PLR = ((LostPacketsum * 100) / txPacketsum); //PLR = ((LostPacketsum * 100) / (txPacketsum));
 		APD = rxPacketsum ? (Delaysum / rxPacketsum) : 0; // APD = (Delaysum / txPacketsum); //to check
 		Avg_Jitter = (Jittersum / rxPacketsum);
-		Throughput = ((iter->second.rxBytes * 8.0) /(iter->second.timeLastRxPacket.GetSeconds()-iter->second.timeFirstTxPacket.GetSeconds()))/ 1024;// / 1024;
+		Throughput = (iter->second.rxBytes - prev_rx_bytes[iter->first]) * 8.0 / 1024;// / 1024;
+		prev_rx_bytes[iter->first] = iter->second.rxBytes;
 
 		//Save in datasets to later plot the results.
 		if (graphType == true)
