@@ -878,6 +878,7 @@ std::string GetTopLevelSourceDir (void)
 
 		// File to Log all Users that will be connected to UABS and how many UABS will be activated.
 		uint32_t randomSeed = 1234;
+		bool phyTraces = false;
 		ns3_dir = GetTopLevelSourceDir();
 
 		CommandLine cmm;
@@ -889,6 +890,7 @@ std::string GetTopLevelSourceDir (void)
     	cmm.AddValue("nENB", "Number of enBs", numberOfeNodeBNodes);
     	cmm.AddValue("remMode","Radio environment map mode",remMode);
 		cmm.AddValue("enableNetAnim","Generate NetAnim XML",enableNetAnim);
+		cmm.AddValue("phyTraces","Generate lte phy traces", phyTraces);
     	cmm.Parse(argc, argv);
 		
 		SeedManager::SetSeed (randomSeed);
@@ -1467,13 +1469,14 @@ std::string GetTopLevelSourceDir (void)
 	 
 		//lteHelper->EnableTraces (); Set the traces on or off. 
 	  
-
-		//Enabling Traces
-		lteHelper->EnablePhyTraces();
-		lteHelper->EnableUlPhyTraces();
-		lteHelper->EnableMacTraces();
-		lteHelper->EnableRlcTraces();
-		lteHelper->EnablePdcpTraces();
+		if(phyTraces){
+			//Enabling Traces
+			lteHelper->EnablePhyTraces();
+			lteHelper->EnableUlPhyTraces();
+			lteHelper->EnableMacTraces();
+			lteHelper->EnableRlcTraces();
+			lteHelper->EnablePdcpTraces();
+		}
 		
 		/*--------------NOTIFICAÇÕES DE UE Mesasurements-------------------------*/
 		Config::Connect ("/NodeList/*/DeviceList/*/LteEnbRrc/RecvMeasurementReport", MakeCallback (&NotifyMeasureMentReport)); 

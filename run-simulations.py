@@ -26,6 +26,7 @@ param_combinations = {
     'nENB' : 4,
     'nUABS' : [8, 15],
     'nUE' : 100,
+    'phyTraces' : 'false',
     'randomSeed' : 8005,
     'remMode' : 0,
     'scen' : [3, 4]
