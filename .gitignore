@@ -37,3 +37,15 @@ build-dir/
 build/
 /.cproject
 /.project
+
+enBs
+LTE*
+Qty_UE_SINR
+Quantity_UABS
+UABSs
+UE_info_UABS
+UEsLowSinr
+*.xml
+
+sem/
+results/
