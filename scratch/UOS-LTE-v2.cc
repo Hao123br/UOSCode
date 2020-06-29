@@ -894,7 +894,6 @@ void setup_uav_mobility(NodeContainer &uavs){
 		posAllocFactory.Set("DeltaY", DoubleValue(deltay));
 		posAllocFactory.Set("MinX", DoubleValue(enbPos.x - distance_from_enbx));
 		posAllocFactory.Set("MinY", DoubleValue(enbPos.y - distance_from_enby));
-		posAllocFactory.Set("Z", DoubleValue(enbPos.z));
 		mobilityUABS.SetPositionAllocator(posAllocFactory.Create<GridPositionAllocator>());
 
 		for(unsigned int j=start; j<end; j++){
