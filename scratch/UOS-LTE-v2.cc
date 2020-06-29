@@ -538,84 +538,76 @@ void alloc_arrays(){
 
 
 
-		void ThroughputCalc(Ptr<FlowMonitor> monitor, Ptr<Ipv4FlowClassifier> classifier,Gnuplot2dDataset datasetThroughput,Gnuplot2dDataset datasetPDR,Gnuplot2dDataset datasetPLR, Gnuplot2dDataset datasetAPD)
+void ThroughputCalc(Ptr<FlowMonitor> monitor, Ptr<Ipv4FlowClassifier> classifier,Gnuplot2dDataset datasetThroughput,Gnuplot2dDataset datasetPDR,Gnuplot2dDataset datasetPLR, Gnuplot2dDataset datasetAPD)
+{
+	double PDR=0.0; //Packets Delay Rate
+	double PLR=0.0; //Packets Lost Rate
+	double APD=0.0; //Average Packet Delay
+	double Avg_Jitter=0.0; //Average Packet Jitter
+	double all_users_PDR=0.0;
+	double all_users_PLR=0.0;
+	double all_users_APD=0.0;
+	double all_users_APJ=0.0;
+	uint32_t txPacketsum = 0; 
+	uint32_t rxPacketsum = 0; 
+	uint32_t DropPacketsum = 0; 
+	uint32_t LostPacketsum = 0; 
+	double Delaysum = 0; 
+	double Jittersum = 0;
+	double Throughput=0.0;
+	double totalThroughput=0.0;
+
+	monitor->CheckForLostPackets ();
+	//Ptr<Ipv4FlowClassifier> classifier = DynamicCast<Ipv4FlowClassifier> (flowmon->GetClassifier ());
+	std::map<FlowId, FlowMonitor::FlowStats> stats = monitor->GetFlowStats ();
+
+	for (std::map<FlowId, FlowMonitor::FlowStats>::const_iterator iter = stats.begin (); iter != stats.end (); ++iter)
+	{
+		txPacketsum += iter->second.txPackets;
+		rxPacketsum += iter->second.rxPackets;
+		LostPacketsum = txPacketsum-rxPacketsum;
+		DropPacketsum += iter->second.packetsDropped.size();
+		Delaysum += iter->second.delaySum.GetSeconds();
+		Jittersum += iter->second.jitterSum.GetSeconds(); 
+		
+		PDR = ((rxPacketsum * 100) / txPacketsum);
+		PLR = ((LostPacketsum * 100) / txPacketsum); //PLR = ((LostPacketsum * 100) / (txPacketsum));
+		APD = rxPacketsum ? (Delaysum / rxPacketsum) : 0; // APD = (Delaysum / txPacketsum); //to check
+		Avg_Jitter = (Jittersum / rxPacketsum);
+		Throughput = ((iter->second.rxBytes * 8.0) /(iter->second.timeLastRxPacket.GetSeconds()-iter->second.timeFirstTxPacket.GetSeconds()))/ 1024;// / 1024;
+
+		//Save in datasets to later plot the results.
+		if (graphType == true)
 		{
-		double PDR=0.0; //Packets Delay Rate
-		double PLR=0.0; //Packets Lost Rate
-		double APD=0.0; //Average Packet Delay
-		double Avg_Jitter=0.0; //Average Packet Jitter
-		uint32_t txPacketsum = 0;
-		uint32_t rxPacketsum = 0;
-		uint32_t DropPacketsum = 0;
-		uint32_t LostPacketsum = 0;
-		double Delaysum = 0;
-		double Jittersum = 0;
-		double Throughput=0.0;
-		double totalThroughput=0.0;
-
-		monitor->CheckForLostPackets ();
-		//Ptr<Ipv4FlowClassifier> classifier = DynamicCast<Ipv4FlowClassifier> (flowmon->GetClassifier ());
-		std::map<FlowId, FlowMonitor::FlowStats> stats = monitor->GetFlowStats ();
-
-		for (std::map<FlowId, FlowMonitor::FlowStats>::const_iterator iter = stats.begin (); iter != stats.end (); ++iter)
-		{
-			Ipv4FlowClassifier::FiveTuple t = classifier->FindFlow (iter->first);
-
-			txPacketsum += iter->second.txPackets;
-			rxPacketsum += iter->second.rxPackets;
-			LostPacketsum = txPacketsum-rxPacketsum;
-			DropPacketsum += iter->second.packetsDropped.size();
-			Delaysum += iter->second.delaySum.GetSeconds();
-			Jittersum += iter->second.jitterSum.GetSeconds(); //Jitter is the amount of variation in latency/response time, in milliseconds. Reliable connections consistently report back the same latency over and over again. Lots of variation (or 'jitter') is an indication of problems.
-
-			// std::cout<<"Flow ID: " << iter->first << " Src Addr " << t.sourceAddress << " Dst Addr " << t.destinationAddress<<"\n";
-			// std::cout<<"Tx Packets = " << iter->second.txPackets<<"\n";
-			// std::cout<<"Rx Packets = " << iter->second.rxPackets<<"\n";
-
-			// //std::cout << "  All Tx Packets: " << txPacketsum << "\n";
-			// //std::cout << "  All Rx Packets: " << rxPacketsum << "\n";
-			// //std::cout << "  All Delay/Average Packet Delay (APD): " << Delaysum / txPacketsum << "\n"; //APD = Average Packet Delay : to do !
-			// //std::cout << "  All Lost Packets: " << LostPacketsum << "\n";
-			// //std::cout << "  All Drop Packets: " << DropPacketsum << "\n";
-
-			// std::cout<<"Throughput: " << iter->second.rxBytes * 8.0 / (iter->second.timeLastRxPacket.GetSeconds()-iter->second.timeFirstTxPacket.GetSeconds()) /1024 << " Kbps\n";///1024 << " Mbps\n";
-			// std::cout << "Packets Delivery Ratio: " << ((rxPacketsum * 100) / txPacketsum) << "%" << "\n";
-			// std::cout << "Packets Loss Ratio: " << ((LostPacketsum * 100) / txPacketsum) << "%" << "\n";
-			// std::cout << "Average Packet Delay: " << Delaysum / txPacketsum << "\n"; 
-			
-			PDR = ((rxPacketsum * 100) / txPacketsum);
-			PLR = ((LostPacketsum * 100) / txPacketsum);
-			APD = (Delaysum / rxPacketsum);
-			Avg_Jitter = (Jittersum / rxPacketsum);
-			Throughput = iter->second.rxBytes * 8.0 /(iter->second.timeLastRxPacket.GetSeconds()-iter->second.timeFirstTxPacket.GetSeconds())/ 1024;// / 1024;
-			
-			// Save in datasets to later plot the results.
-			if (graphType == true){
 			datasetThroughput.Add((double)iter->first,(double) Throughput);
 			datasetPDR.Add((double)iter->first,(double) PDR);
 			datasetPLR.Add((double)iter->first,(double) PLR);
 			datasetAPD.Add((double)iter->first,(double) APD);
 			datasetAvg_Jitter.Add((double)iter->first,(double) Avg_Jitter);
-			} else {
+		} else {
 			totalThroughput += Throughput;
-			}
+			all_users_PDR += PDR;
+			all_users_PLR += PLR;
+			all_users_APD += APD;
+			all_users_APJ += Avg_Jitter;
 		}
-		if(!graphType){
+	}
+
+	if (graphType == false)
+	{
+		all_users_PDR = all_users_PDR / numberOfUENodes;
+		all_users_PLR = all_users_PLR / numberOfUENodes;
+		all_users_APD = all_users_APD / numberOfUENodes;
+		all_users_APJ = all_users_APJ / numberOfUENodes;
 		datasetThroughput.Add((double)Simulator::Now().GetSeconds(),(double) totalThroughput);
-		datasetPDR.Add((double)Simulator::Now().GetSeconds(),(double) PDR);
-		datasetPLR.Add((double)Simulator::Now().GetSeconds(),(double) PLR);
-		datasetAPD.Add((double)Simulator::Now().GetSeconds(),(double) APD);
-		datasetAvg_Jitter.Add((double)Simulator::Now().GetSeconds(),(double) Avg_Jitter);
-		}
+		datasetPDR.Add((double)Simulator::Now().GetSeconds(),(double) all_users_PDR);
+		datasetPLR.Add((double)Simulator::Now().GetSeconds(),(double) all_users_PLR);
+		datasetAPD.Add((double)Simulator::Now().GetSeconds(),(double) all_users_APD);
+		datasetAvg_Jitter.Add((double)Simulator::Now().GetSeconds(),(double) all_users_APJ);
+	}
 
-			//}
-
-		//monitor->SerializeToXmlFile("UOSLTE-FlowMonitor.xml",true,true);
-		//monitor->SerializeToXmlFile("UOSLTE-FlowMonitor_run_"+std::to_string(z)+".xml",true,true);
-		Simulator::Schedule(Seconds(1),&ThroughputCalc, monitor,classifier,datasetThroughput,datasetPDR,datasetPLR,datasetAPD);
-
-
-		}
+	Simulator::Schedule(Seconds(1),&ThroughputCalc, monitor,classifier,datasetThroughput,datasetPDR,datasetPLR,datasetAPD);
+}
 
 		void UDPApp (Ptr<Node> remoteHost, NodeContainer ueNodes, Ipv4Address remoteHostAddr, Ipv4InterfaceContainer ueIpIface) {
 			// Install and start applications on UEs and remote host
@@ -1352,6 +1344,7 @@ std::string GetTopLevelSourceDir (void)
 	  // ueIpIface = epcHelper->AssignUeIpv4Address (NetDeviceContainer (ueLteDevs));
 	  
 	  // Assign IP address to UEs, and install applications
+	  Ipv4Address ue_IP_Address;
 	  for (uint16_t i = 0; i < ueNodes.GetN(); i++) 
 	  {
 		Ptr<Node> ueNode = ueNodes.Get (i);
