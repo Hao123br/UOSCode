@@ -112,10 +112,6 @@ vector<double> ue_imsi_sinr_linear;
 vector<double> ue_info_cellid;
 int minSINR = 0; //  minimum SINR to be considered to clusterization
 string GetClusterCoordinates;
-double PDR=0.0; //Packets Delay Rate
-double PLR=0.0; //Packets Lost Rate
-double APD=0.0;	//Average Packet Delay
-double Avg_Jitter=0.0;	//Average Packet Jitter
 bool UABSFlag;
 bool UABS_On_Flag = false;
 std::stringstream cmd;
@@ -538,6 +534,10 @@ void alloc_arrays(){
 
 		void ThroughputCalc(Ptr<FlowMonitor> monitor, Ptr<Ipv4FlowClassifier> classifier,Gnuplot2dDataset datasetThroughput,Gnuplot2dDataset datasetPDR,Gnuplot2dDataset datasetPLR, Gnuplot2dDataset datasetAPD)
 		{
+		double PDR=0.0; //Packets Delay Rate
+		double PLR=0.0; //Packets Lost Rate
+		double APD=0.0; //Average Packet Delay
+		double Avg_Jitter=0.0; //Average Packet Jitter
 		uint32_t txPacketsum = 0;
 		uint32_t rxPacketsum = 0;
 		uint32_t DropPacketsum = 0;
@@ -545,6 +545,7 @@ void alloc_arrays(){
 		double Delaysum = 0;
 		double Jittersum = 0;
 		double Throughput=0.0;
+		double totalThroughput=0.0;
 
 		monitor->CheckForLostPackets ();
 		//Ptr<Ipv4FlowClassifier> classifier = DynamicCast<Ipv4FlowClassifier> (flowmon->GetClassifier ());
@@ -580,21 +581,21 @@ void alloc_arrays(){
 			PLR = ((LostPacketsum * 100) / txPacketsum);
 			APD = (Delaysum / rxPacketsum);
 			Avg_Jitter = (Jittersum / rxPacketsum);
+			Throughput = iter->second.rxBytes * 8.0 /(iter->second.timeLastRxPacket.GetSeconds()-iter->second.timeFirstTxPacket.GetSeconds())/ 1024;// / 1024;
 			
 			// Save in datasets to later plot the results.
 			if (graphType == true){
-			Throughput = iter->second.rxBytes * 8.0 /(iter->second.timeLastRxPacket.GetSeconds()-iter->second.timeFirstTxPacket.GetSeconds())/ 1024;// / 1024;
 			datasetThroughput.Add((double)iter->first,(double) Throughput);
 			datasetPDR.Add((double)iter->first,(double) PDR);
 			datasetPLR.Add((double)iter->first,(double) PLR);
 			datasetAPD.Add((double)iter->first,(double) APD);
 			datasetAvg_Jitter.Add((double)iter->first,(double) Avg_Jitter);
 			} else {
-			Throughput += iter->second.rxBytes * 8.0 /(iter->second.timeLastRxPacket.GetSeconds()-iter->second.timeFirstTxPacket.GetSeconds())/ 1024;// / 1024;
+			totalThroughput += Throughput;
 			}
 		}
 		if(!graphType){
-		datasetThroughput.Add((double)Simulator::Now().GetSeconds(),(double) Throughput);
+		datasetThroughput.Add((double)Simulator::Now().GetSeconds(),(double) totalThroughput);
 		datasetPDR.Add((double)Simulator::Now().GetSeconds(),(double) PDR);
 		datasetPLR.Add((double)Simulator::Now().GetSeconds(),(double) PLR);
 		datasetAPD.Add((double)Simulator::Now().GetSeconds(),(double) APD);
