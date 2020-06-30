@@ -91,6 +91,7 @@
 using namespace ns3;
 
 const uint16_t numberOfOverloadUENodes = 0; // user that will be connected to an specific enB. 
+const uint16_t numberOfSmallCellNodes = 8;
 uint16_t numberOfeNodeBNodes = 4;
 uint16_t numberOfUENodes = 100; //Number of user to test: 245, 392, 490 (The number of users and their traffic model follow the parameters recommended by the 3GPP)
 uint16_t numberOfUABS = 6;
@@ -100,8 +101,9 @@ const int m_distance = 2000; //m_distance between enBs towers.
 // double interPacketInterval = 1;
 // double interPacketInterval = 100;
 // uint16_t port = 8000;
-int evalvidId = 0;      
+int evalvidId = 0;
 int eNodeBTxPower = 46; //Set enodeB Power dBm 46dBm --> 20MHz  |  43dBm --> 5MHz
+int scTxPower = 23;
 int UABSTxPower = 0;//23;   //Set UABS Power
 uint8_t bandwidth_enb = 100; // 100 RB --> 20MHz  |  25 RB --> 5MHz
 uint8_t bandwidth_UABS = 100; // 100 RB --> 20MHz  |  25 RB --> 5MHz
@@ -114,11 +116,13 @@ vector<double> ue_info_cellid;
 std::unordered_map<FlowId, uint64_t> prev_rx_bytes;
 int minSINR = 0; //  minimum SINR to be considered to clusterization
 string GetClusterCoordinates;
+bool smallCells = false;
 bool UABSFlag;
 bool UABS_On_Flag = false;
 std::stringstream cmd;
 double UABSHeight = 80;
 double enBHeight = 30;
+double scHeight = 5;
 int scen = 4; 
 // [Scenarios --> Scen[0]: General Scenario, with no UABS support, network ok;  Scen[1]: one enB damaged (off) and no UABS;
 // Scen[2]: one enB damaged (off) with supporting UABS; Scen[3]:Overloaded enB(s) with no UABS support; Scen[4]:Overloaded enB(s) with UABS support; ]
@@ -147,11 +151,23 @@ std::vector<Vector> enb_positions {
 	Vector( 4500, 4500 , enBHeight)
 	};
 
+std::vector<Vector> sc_positions {
+	Vector( 100, 100 , scHeight),  Vector( 100, 2000 , scHeight),  Vector( 100, 3900 , scHeight),
+
+	Vector( 2000, 100 , scHeight),/*Vector( 2000, 2000 , scHeight),*/Vector( 2000, 3900 , scHeight),
+
+	Vector( 3900, 100 , scHeight),  Vector( 3900, 2000 , scHeight),  Vector( 3900, 3900 , scHeight)
+	};
+
 NS_LOG_COMPONENT_DEFINE ("UOSLTE");
 
 
 void alloc_arrays(){
-	ue_info.setDimensions (numberOfeNodeBNodes + numberOfUABS, numberOfUENodes);
+	if(smallCells) {
+		ue_info.setDimensions (numberOfeNodeBNodes + numberOfSmallCellNodes + numberOfUABS, numberOfUENodes);
+	} else {
+		ue_info.setDimensions (numberOfeNodeBNodes + numberOfUABS, numberOfUENodes);
+	}
 	ue_imsi_sinr.resize (numberOfUENodes);
 	ue_imsi_sinr_linear.resize (numberOfUENodes);
 	ue_info_cellid.resize (numberOfUENodes);
@@ -940,6 +956,7 @@ std::string GetTopLevelSourceDir (void)
     	cmm.AddValue("remMode","Radio environment map mode",remMode);
 		cmm.AddValue("enableNetAnim","Generate NetAnim XML",enableNetAnim);
 		cmm.AddValue("phyTraces","Generate lte phy traces", phyTraces);
+		cmm.AddValue("enableSCs","Enable smallCells", smallCells);
     	cmm.Parse(argc, argv);
 		
 		SeedManager::SetSeed (randomSeed);
@@ -1141,6 +1158,12 @@ std::string GetTopLevelSourceDir (void)
 		}
 		NodeContainer enbNodes;
 		enbNodes.Create(numberOfeNodeBNodes);
+
+		NodeContainer scNodes;
+		if(smallCells) {
+			scNodes.Create(numberOfSmallCellNodes);
+		}
+
 		NodeContainer UABSNodes;
 		if (scen == 2 || scen == 4)
 		{
@@ -1175,6 +1198,16 @@ std::string GetTopLevelSourceDir (void)
 		mobilityenB.SetPositionAllocator(positionAlloc2);
 		mobilityenB.Install(enbNodes);
 		BuildingsHelper::Install (enbNodes);
+
+		Ptr<ListPositionAllocator> positionAllocSC = CreateObject<ListPositionAllocator> ();
+		for(Vector pos : sc_positions) {
+			positionAllocSC->Add (pos);
+		}
+		MobilityHelper mobilitySC;
+		mobilitySC.SetMobilityModel("ns3::ConstantPositionMobilityModel");
+		mobilitySC.SetPositionAllocator(positionAllocSC);
+		mobilitySC.Install(scNodes);
+		BuildingsHelper::Install (scNodes);
 
 		//BuildingsHelper::Install (enbNodes);
 		
@@ -1218,6 +1251,8 @@ std::string GetTopLevelSourceDir (void)
 		// ------------------- Install LTE Devices to the nodes --------------------------------//
 		NetDeviceContainer enbLteDevs = lteHelper->InstallEnbDevice (enbNodes);
 
+		Config::SetDefault ("ns3::LteEnbPhy::TxPower", DoubleValue (scTxPower));
+		NetDeviceContainer scLteDevs = lteHelper->InstallEnbDevice (scNodes);
 
 		NS_LOG_UNCOND("Installing Mobility Model in UEs...");
 
@@ -1321,7 +1356,7 @@ std::string GetTopLevelSourceDir (void)
 		if(scen != 0)
 		{
 		// ---------------Get position of enBs, UABSs and UEs. -------------------//
-		Simulator::Schedule(Seconds(5), &GetPositionUEandenB,enbNodes,UABSNodes,enbLteDevs,UABSLteDevs,ueOverloadNodes,ueLteDevs);
+		Simulator::Schedule(Seconds(5), &GetPositionUEandenB, NodeContainer(enbNodes, scNodes),UABSNodes, NetDeviceContainer(enbLteDevs, scLteDevs), UABSLteDevs,ueOverloadNodes,ueLteDevs);
 		}
 
 
@@ -1378,27 +1413,19 @@ std::string GetTopLevelSourceDir (void)
 		//lteHelper->AttachToClosestEnb (ueLteDevs, enbLteDevs);
 		lteHelper->Attach (ueLteDevs);
 		
-		// this enables handover for macro eNBs
-		lteHelper->AddX2Interface (enbNodes); // X2 interface for macrocells
-		
-		if (scen == 2 || scen == 4)
-		{
-		lteHelper->AddX2Interface (UABSNodes); // X2 interface for UABSs
+		NodeContainer baseStationNodes;
+		baseStationNodes.Add(enbNodes);
+
+		if(smallCells) {
+			baseStationNodes.Add(scNodes);
+		}
+
+		if(scen == 2 || scen == 4){
+			baseStationNodes.Add(UABSNodes);
+		}
 
 		//Set a X2 interface between UABS and all enBs to enable handover.
-		for (uint16_t i = 0; i < UABSNodes.GetN(); i++) 
-		{
-			Ptr<Node> PosUABS = UABSNodes.Get(i)->GetObject<Node>();
-			for (uint16_t j = 0; j < enbNodes.GetN(); j++) 
-			{
-				Ptr<Node> PosUABS = enbNodes.Get(j)->GetObject<Node>();
-				//Set a X2 interface between UABS and all enBs	
-				lteHelper->AddX2Interface(UABSNodes.Get(i), enbNodes.Get(j));
-				//NS_LOG_UNCOND("Creating X2 Interface between UABS " << UABSNodes.Get(i) << " and enB " << enbNodes.Get(j));
-			}
-		}
-		}
-
+		lteHelper->AddX2Interface (baseStationNodes);
 		
 		// -----------------------Activate EPSBEARER---------------------------//
 		lteHelper->ActivateDedicatedEpsBearer (ueLteDevs, EpsBearer (EpsBearer::NGBR_VIDEO_TCP_DEFAULT), EpcTft::Default ());
@@ -1459,6 +1486,12 @@ std::string GetTopLevelSourceDir (void)
 				anim->UpdateNodeDescription(enbNodes.Get(i), "eNb");
 				anim->UpdateNodeColor(enbNodes.Get(i), 0, 255, 0);
 				anim->UpdateNodeSize(enbNodes.Get(i)->GetId(),300,300); // to change the node size in the animation.
+			}
+			for (uint32_t i = 0; i < scNodes.GetN(); ++i)
+			{
+				anim->UpdateNodeDescription(scNodes.Get(i), "SmallCells");
+				anim->UpdateNodeColor(scNodes.Get(i), 255, 255, 0);
+				anim->UpdateNodeSize(scNodes.Get(i)->GetId(),200,200); // to change the node size in the animation.
 			}
 			for (uint32_t i = 0; i < ueNodes.GetN(); ++i) 
 			{
