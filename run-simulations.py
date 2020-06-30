@@ -22,6 +22,7 @@ print(campaign)
 
 param_combinations = {
     'enableNetAnim' : 'false',
+    'enableSCs' : ['false', 'true'],
     'graphType' : 'false',
     'nENB' : 4,
     'nUABS' : [8, 15],
@@ -33,6 +34,7 @@ param_combinations = {
 }
 
 result_param = {
+    'enableSCs' : ['false', 'true'],
     'scen' : [3, 4],
     'nENB' : [4],
     'nUABS' : [8, 15],
