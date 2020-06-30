@@ -145,11 +145,11 @@ std::string ns3_dir;
 NodeContainer ueNodes;
 
 std::vector<Vector> sc_positions {
-	Vector( 100, 100 , scHeight),  Vector( 100, 2000 , scHeight),  Vector( 100, 3900 , scHeight),
+	Vector( 100, 100 , scHeight),  Vector( 100, 3000 , scHeight),  Vector( 100, 5900 , scHeight),
 
-	Vector( 2000, 100 , scHeight),/*Vector( 2000, 2000 , scHeight),*/Vector( 2000, 3900 , scHeight),
+	Vector( 3000, 100 , scHeight),/*Vector( 3000, 3000 , scHeight),*/Vector( 3000, 5900 , scHeight),
 
-	Vector( 3900, 100 , scHeight),  Vector( 3900, 2000 , scHeight),  Vector( 3900, 3900 , scHeight)
+	Vector( 5900, 100 , scHeight),  Vector( 5900, 3000 , scHeight),  Vector( 5900, 5900 , scHeight)
 	};
 
 NS_LOG_COMPONENT_DEFINE ("UOSLTE");
