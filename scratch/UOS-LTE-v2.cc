@@ -872,7 +872,9 @@ void setup_uav_mobility(NodeContainer &uavs){
 	uint8_t uav_per_enb;
 	uint8_t cols, rows;
 	double deltax, deltay;
-	Vector enbPos;
+	Vector enbPos, uavPos;
+	Ptr<Node> uav;
+	Ptr<ConstantVelocityMobilityModel> uavMobModel;
 
 	MobilityHelper mobilityUABS;
 	mobilityUABS.SetMobilityModel ("ns3::ConstantVelocityMobilityModel");
@@ -913,7 +915,12 @@ void setup_uav_mobility(NodeContainer &uavs){
 		mobilityUABS.SetPositionAllocator(posAllocFactory.Create<GridPositionAllocator>());
 
 		for(unsigned int j=start; j<end; j++){
+			uav = uavs.Get(j);
 			mobilityUABS.Install(uavs.Get(j));
+			uavMobModel = uav->GetObject<ConstantVelocityMobilityModel>();
+			uavPos = uavMobModel->GetPosition();
+			uavPos.z = UABSHeight;
+			uavMobModel->SetPosition(uavPos);
 		}
 		start = end;
 	}
