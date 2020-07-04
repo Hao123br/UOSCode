@@ -592,7 +592,7 @@ void ThroughputCalc(Ptr<FlowMonitor> monitor, Ptr<Ipv4FlowClassifier> classifier
 		PDR = ((rxPacketsum * 100) / txPacketsum);
 		PLR = ((LostPacketsum * 100) / txPacketsum); //PLR = ((LostPacketsum * 100) / (txPacketsum));
 		APD = rxPacketsum ? (Delaysum / rxPacketsum) : 0; // APD = (Delaysum / txPacketsum); //to check
-		Avg_Jitter = (Jittersum / rxPacketsum);
+		Avg_Jitter = rxPacketsum ? (Jittersum / rxPacketsum) : 0;
 		Throughput = (iter->second.rxBytes - prev_rx_bytes[iter->first]) * 8.0 / 1024;// / 1024;
 		prev_rx_bytes[iter->first] = iter->second.rxBytes;
 
