@@ -1251,7 +1251,15 @@ std::string GetTopLevelSourceDir (void)
 			positionAllocUABS->Add (Vector( 4400, 1600 , enBHeight)); //6
 			positionAllocUABS->Add (Vector( 1600, 4400 , enBHeight)); //7
 			positionAllocUABS->Add (Vector( 4400, 4400 , enBHeight)); //8
-			// have to add as many os UABS will be used in the simulation, in this example there are 8 UABS available 
+			positionAllocUABS->Add (Vector( 1600, 1400 , enBHeight)); //9
+			positionAllocUABS->Add (Vector( 4400, 1400 , enBHeight)); //10
+			positionAllocUABS->Add (Vector( 1600, 4600 , enBHeight)); //11
+			positionAllocUABS->Add (Vector( 4400, 4600 , enBHeight)); //12
+			positionAllocUABS->Add (Vector( 1400, 1600 , enBHeight)); //13
+			positionAllocUABS->Add (Vector( 4600, 1600 , enBHeight)); //14
+			positionAllocUABS->Add (Vector( 1400, 4400 , enBHeight)); //15
+			positionAllocUABS->Add (Vector( 4600, 4400 , enBHeight)); //16
+			// have to add as many os UABS will be used in the simulation, in this example there are 16 UABS available 
 
 			MobilityHelper mobilityUABS;
 			mobilityUABS.SetMobilityModel ("ns3::ConstantVelocityMobilityModel");
